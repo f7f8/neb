@@ -1,0 +1,10 @@
+{
+  "mongo_uri": "mongodb://ecantdbo:qwe123123@172.16.0.7/ecant",
+  "data": {
+    "categories": "/var/local/www/baichuan/wwwroot/matrix/data/m/categories.txt",
+    "provinces": "/var/local/www/baichuan/wwwroot/matrix/data/m/provinces.txt",
+    "stores": "/var/local/www/baichuan/wwwroot/matrix/data/m/stores.txt",
+    "goods": "/var/local/www/baichuan/wwwroot/matrix/data/tr/goods.txt",
+    "transactions": "/var/local/www/baichuan/wwwroot/matrix/data/tr/tr{%02d}.txt"
+  }
+}
