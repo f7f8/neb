@@ -74,14 +74,17 @@ def loadFlatCategories(filename):
 
     for k, v in cdic.iteritems():
         if v['parent'] == -1:
+            # print '一级分类 %d: %s' % (k, v['name'])
             continue
 
         pid = v['parent']
         while cdic[pid]['parent'] != -1:
-            print pid
             pid = cdic[pid]['parent']
 
-        print '%d: %s -> %d ... %d' % (k, v['name'], v['parent'], pid)
+        v['root'] = pid
+        # print '%d: %s -> %d ... %d' % (k, v['name'], v['parent'], pid)
+
+    return cdic
 
 
 if __name__ == '__main__':
@@ -100,7 +103,7 @@ if __name__ == '__main__':
         config = json.load(json_data)
 
     print json.dumps(config, indent=2)
-    connectMongo(config['mongo_uri'])
-    loadFlatCategories(config["data"]["categories"])
 
+    connectMongo(config['mongo_uri'])
+    flatCategories = loadFlatCategories(config["data"]["categories"])
     print_prof_data()
