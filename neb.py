@@ -259,6 +259,8 @@ def loadTransactions(filename, stores):
         mkey = ''
 
         bulkSet = {}
+        bulkUpdStores = {}
+        bulkUpdCategories = {}
         for line in f:
             lc += 1
             m = r.match(line)
@@ -268,6 +270,7 @@ def loadTransactions(filename, stores):
 
             g = m.groups()
             oid = g[0]
+            stid = int(g[6])
 
             lastoid = lastOrder['order_id']
             if lastoid == "-1" or lastoid != oid:
@@ -293,7 +296,6 @@ def loadTransactions(filename, stores):
                 #mkey = tm.strftime("%Y%m")
                 mkey = tm[:4] + tm[5:7]
                 uid = int(g[5])
-                stid = int(g[6])
                 lastOrder = {
                     'order_id': oid,
                     'store_id': stid,
@@ -320,7 +322,19 @@ def loadTransactions(filename, stores):
                 'amount': amount
             })
 
-            # updateStoreStat(lastOrder['store_id'], qty, amount, mkey)
+            stbkey = '%d_%s' % (stid, mkey)
+            if stbkey not in bulkUpdStores:
+                bulkUpdStores[stbkey] = {
+                        'stid': stid,
+                        'qty': qty,
+                        'amount': amount,
+                        'mkey': mkey
+                        }
+
+            pvid = STORES[stid]['province']
+            bulkUpdStores[stbkey].append([stid, pvid, qty, amount, mkey)
+
+            updateStoreStat(stid, qty, amount, mkey)
             # updateCategoryStat(go['cid'], qty, amount, mkey)
 
             tc += 1
