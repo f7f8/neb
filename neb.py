@@ -61,6 +61,22 @@ def connectMongo(url):
     DB = MongoClient(url).baichuan
 
 
+def getGoodsFromLocal(sku):
+    return GOODS[sku - 1]
+
+
+def getGoodsFromRedis(sku):
+    s = ''
+    if sku % 2 == 0:
+        s = R0.get(str(sku))
+    else:
+        s = R1.get(str(sku))
+
+    s = s.replace('\\', '\\\\')
+    g = json.loads(s, strict=False)
+    return g
+
+
 @profile
 def loadFlatCategories(filename):
     cdic = {}
@@ -161,7 +177,7 @@ def loadGoodsToRedis(filename):
 
 @profile
 def loadGoods(filename):
-    goods = {}
+    goods = []
     gc = 0
     lc = 0
     with open(filename) as f:
@@ -174,11 +190,12 @@ def loadGoods(filename):
                 continue
 
             g = m.groups()
-            goods[int(g[0])] = {
-                'name': zlib.compress(g[1]),
+            goods.append({
+                'name': g[1],
                 # 'price': int(g[2]),
                 'cid': int(g[3])
-            }
+            })
+
             gc += 1
 
             if gc % 500000 == 0:
@@ -187,7 +204,6 @@ def loadGoods(filename):
         logging.debug('成功加载商品 %d / %d 行' % (gc, lc))
 
     return goods
-
 
 def saveOrder(order, mkey):
     dbkey = 'tr%s_%d' % (
@@ -274,14 +290,7 @@ def loadTransactions(filename, stores):
             amount = price * qty
             lastOrder['total_amount'] += amount
 
-            s = ''
-            if sku % 2 == 0:
-                s = R0.get(str(sku))
-            else:
-                s = R1.get(str(sku))
-
-            s = s.replace('\\', '\\\\')
-            g = json.loads(s, strict=False)
+            g = getGoodsFromLocal(sku)
 
             lastOrder['items'].append({
                 'sku': sku,
@@ -370,8 +379,10 @@ if __name__ == '__main__':
     STORES = loadStores(CONFIG["data"]["stores"])
     logging.info('[neb] 共发现 %d 个门店' % len(STORES))
 
-    # logging.info('[neb] 开始加载商品信息 <-- %s' % CONFIG["data"]["goods"])
+    global GOODS
+    logging.info('[neb] 开始加载商品信息 <-- %s' % CONFIG["data"]["goods"])
     # loadGoodsToRedis(CONFIG["data"]["goods"])
+    GOODS = loadGoods(CONFIG["data"]["goods"])
 
     loadAllTransactions()
     # doLoadTrTask(CONFIG["data"]["transactions"] % 1)
