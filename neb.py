@@ -301,9 +301,11 @@ def loadTransactions(filename, stores):
 
                 # mkey = tm.strftime("%Y%m")
                 mkey = tm[:4] + tm[5:7]
+                dkey = tm[:4] + tm[5:7] + tm[8:10]
                 uid = int(g[5])
                 lastOrder = {
                     'order_id': oid,
+                    'dkey': int(dkey),
                     'store_id': stid,
                     'uid': uid,
                     'created_at': tm,

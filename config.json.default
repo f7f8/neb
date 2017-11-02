@@ -1,6 +1,6 @@
 {
-  "db0": "mongodb://baichuandbo:qwe123123@172.16.0.10/baichuan",
-  "db1": "mongodb://baichuandbo:qwe123123@172.16.0.7/baichuan",
+  "db0": "mongodb://baichuandbo:qwe123123@172.16.0.14/baichuan",
+  "db1": "mongodb://baichuandbo:qwe123123@172.16.0.13/baichuan",
   "R0": {
       "host": "172.16.0.8",
       "port": 6379
@@ -9,13 +9,13 @@
       "host": "172.16.0.7",
       "port": 6379
   },
-  "trs_from": 1,
-  "trs_to": 4,
+  "trs_from": 5,
+  "trs_to": 8,
   "data": {
-    "categories": "../data/categories.txt",
-    "provinces": "../data/provinces.txt",
-    "stores": "../data/stores.txt",
-    "goods": "../data/goods.txt",
-    "transactions": "../data/tr-%02d.txt"
+    "categories": "/mnt/mongodb/baichuan/data/categories.txt",
+    "provinces": "/mnt/mongodb/baichuan/data/provinces.txt",
+    "stores": "/mnt/mongodb/baichuan/data/stores.txt",
+    "goods": "/mnt/mongodb/baichuan/data/goods.txt",
+    "transactions": "/mnt/mongodb/baichuan/data/tr-%02d.txt"
   }
 }
