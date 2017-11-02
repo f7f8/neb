@@ -5,10 +5,8 @@ import sys
 import os
 import logging
 import json
-import zlib
 import re
 import time
-import dateutil.parser
 from functools import wraps
 from pymongo import MongoClient
 import signal
@@ -61,7 +59,7 @@ def traversalCategories():
 def connectMongo():
     global DB0
     DB0 = MongoClient(CONFIG['db0']).baichuan
-    
+
     global DB1
     DB1 = MongoClient(CONFIG['db1']).baichuan
 
@@ -210,6 +208,7 @@ def loadGoods(filename):
 
     return goods
 
+
 def saveBulkOrders(blk):
     for k, v in blk.iteritems():
         DB0[k].insert(v)
@@ -219,28 +218,31 @@ def saveBulkOrders(blk):
 #        DB1[dbkey].insert(order)
 #
 
-def updateStoreStat(stid, qty, amount, mkey):
-    pvid = STORES[stid]['province']
 
-    query = {'stid': stid, 'mkey': mkey}
-    update = {
-        '$set': {'stid': stid, 'mkey': mkey, 'pvid': pvid},
-        '$inc': {'qty': qty, 'amount': amount}
-    }
+def updateStoreStat(blk):
+    op = DB0['store_stats'].initialize_ordered_bulk_op()
+    for k, v in blk.iteritems():
+        query = {'stid': v['stid'], 'mkey': v['mkey']}
+        update = {
+            '$set': {'stid': v['stid'], 'mkey': v['mkey'], 'pvid': v['pvid']},
+            '$inc': {'qty': v['qty'], 'amount': v['amount']}
+        }
+        op.find(query).upsert().update(update)
 
-    DB0['store_stats'].update(query, update, upsert = True)
+    op.execute()
 
 
-def updateCategoryStat(cid, qty, amount, mkey):
-    rootcid = FLATC[cid]['root'] if 'root' in FLATC[cid] else cid
+def updateCategoryStat(blk):
+    op = DB0['category_stats'].initialize_ordered_bulk_op()
+    for k, v in blk.iteritems():
+        query = {'rootcid': v['cid'], 'mkey': v['mkey']}
+        update = {
+            '$set': {'rootcid': v['cid'], 'mkey': v['mkey']},
+            '$inc': {'qty': v['qty'], 'amount': v['amount']}
+        }
+        op.find(query).upsert().update(update)
 
-    query = {'rootcid': rootcid, 'mkey': mkey}
-    update = {
-        '$set': {'rootcid': rootcid, 'mkey': mkey},
-        '$inc': {'qty': qty, 'amount': amount}
-    }
-
-    DB0['category_stats'].update(query, update, upsert = True)
+    op.execute()
 
 
 def loadTransactions(filename, stores):
@@ -285,15 +287,21 @@ def loadTransactions(filename, stores):
 
                     bulkSet[dbkey].append(lastOrder)
                     oc += 1
-                    
-                    if oc % 50000 == 0:
+
+                    if oc % 10000 == 0:
                         saveBulkOrders(bulkSet)
                         bulkSet = {}
 
-                #tm = dateutil.parser.parse(g[4])
+                    if oc % 1000000 == 0:
+                        updateStoreStat(bulkUpdStores)
+                        bulkUpdStores = {}
+                        updateCategoryStat(bulkUpdCategories)
+                        bulkUpdCategories = {}
+
+                # tm = dateutil.parser.parse(g[4])
                 tm = g[4][:26]
 
-                #mkey = tm.strftime("%Y%m")
+                # mkey = tm.strftime("%Y%m")
                 mkey = tm[:4] + tm[5:7]
                 uid = int(g[5])
                 lastOrder = {
@@ -324,18 +332,31 @@ def loadTransactions(filename, stores):
 
             stbkey = '%d_%s' % (stid, mkey)
             if stbkey not in bulkUpdStores:
+                pvid = STORES[stid]['province']
                 bulkUpdStores[stbkey] = {
-                        'stid': stid,
-                        'qty': qty,
-                        'amount': amount,
-                        'mkey': mkey
-                        }
+                    'stid': stid,
+                    'pvid': pvid,
+                    'qty': qty,
+                    'amount': amount,
+                    'mkey': mkey
+                }
 
-            pvid = STORES[stid]['province']
-            bulkUpdStores[stbkey].append([stid, pvid, qty, amount, mkey)
+            bulkUpdStores[stbkey]['qty'] += qty
+            bulkUpdStores[stbkey]['amount'] += amount
 
-            updateStoreStat(stid, qty, amount, mkey)
-            # updateCategoryStat(go['cid'], qty, amount, mkey)
+            cid = go['cid']
+            rootcid = FLATC[cid]['root'] if 'root' in FLATC[cid] else cid
+            cibkey = '%d_%s' % (rootcid, mkey)
+            if cibkey not in bulkUpdCategories:
+                bulkUpdCategories[cibkey] = {
+                    'cid': rootcid,
+                    'qty': qty,
+                    'amount': amount,
+                    'mkey': mkey
+                }
+
+            bulkUpdCategories[cibkey]['qty'] += qty
+            bulkUpdCategories[cibkey]['amount'] += amount
 
             tc += 1
 
@@ -345,6 +366,10 @@ def loadTransactions(filename, stores):
         oc += 1
         saveBulkOrders(bulkSet)
         bulkSet = {}
+        updateStoreStat(bulkUpdStores)
+        bulkUpdStores = {}
+        updateCategoryStat(bulkUpdCategories)
+        bulkUpdCategories = {}
         logging.debug('成功加载交易 %d / %d 行, 共 %d 个订单' % (tc, lc, oc))
 
 
@@ -362,7 +387,7 @@ def init_worker():
 def loadAllThreads2():
     trange = range(CONFIG["trs_from"], CONFIG["trs_to"] + 1)
     tasks = [CONFIG["data"]["transactions"] % i for i in trange]
-   
+
     try:
         fs = []
         e = ThreadPoolExecutor(max_workers=4)
@@ -372,7 +397,7 @@ def loadAllThreads2():
         e.shutdown(False)
         concurrent.futures.wait(fs)
     except KeyboardInterrupt:
-        LOG.debug('任务强制中断！')
+        logging.debug('任务强制中断！')
 
 
 @profile
@@ -380,7 +405,7 @@ def loadAllThreads():
     trange = range(CONFIG["trs_from"], CONFIG["trs_to"] + 1)
     tasks = [CONFIG["data"]["transactions"] % i for i in trange]
     futures = set()
-    with ThreadPoolExecutor(max_workers=4) as executor:                                                                                                                      
+    with ThreadPoolExecutor(max_workers=4) as executor:
         for c in tasks:
             future = executor.submit(doLoadTrTask, c)
             futures.add(future)
@@ -388,9 +413,11 @@ def loadAllThreads():
     try:
         for future in concurrent.futures.as_completed(futures):
             err = future.exception()
-            if err is not None: raise err 
+            if err is not None:
+                raise err
+
     except KeyboardInterrupt:
-        LOG.debug('任务强制中断！')
+        logging.debug('任务强制中断！')
         executor._threads.clear()
         concurrent.futures.thread._threads_queues.clear()
 
