@@ -308,6 +308,7 @@ def loadTransactions(filename, stores):
 
 
 def doLoadTrTask(filename):
+    connectMongo(CONFIG['db_baichuan'])
     logging.info('[neb] 开始加载交易信息 <-- %s' % filename)
     loadTransactions(filename, STORES)
 
@@ -361,8 +362,6 @@ if __name__ == '__main__':
     R1 = redis.StrictRedis(
         host=CONFIG["R1"]["host"], port=CONFIG["R1"]["port"], db=0
     )
-
-    connectMongo(CONFIG['db_baichuan'])
 
     global FLATC
     logging.info('[neb] 开始加载品类信息 <-- %s' % CONFIG["data"]["categories"])
