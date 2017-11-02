@@ -274,9 +274,9 @@ def init_worker():
 
 @profile
 def loadAllTransactions():
-    tasks = [config["data"]["transactions"] % (i + 1) for i in range(12)]
-    print 'tasks: %d' % len(tasks)
-    pool = Pool(4, init_worker)
+    trange = range(CONFIG["trs_from"], CONFIG["trs_to"] + 1)
+    tasks = [CONFIG["data"]["transactions"] % i for i in trange]
+    pool = Pool(len(tasks), init_worker)
 
     try:
         logging.debug('分类爬取并行任务已经启动，按Ctrl + C中止！')
@@ -301,29 +301,34 @@ if __name__ == '__main__':
     reload(sys)
     sys.setdefaultencoding("utf8")
 
-    config = None
+    global CONFIG
+    CONFIG = None
     with open('config.json') as json_data:
-        config = json.load(json_data)
+        CONFIG = json.load(json_data)
 
-    print json.dumps(config, indent=2)
+    print json.dumps(CONFIG, indent=2)
 
     global R0
-    R0 = redis.StrictRedis(host='172.16.0.8', port=6379, db=0)
+    R0 = redis.StrictRedis(
+        host=CONFIG["R0"]["host"], port=CONFIG["R0"]["port"], db=0
+    )
 
     global R1
-    R1 = redis.StrictRedis(host='172.16.0.7', port=6379, db=0)
+    R1 = redis.StrictRedis(
+        host=CONFIG["R1"]["host"], port=CONFIG["R1"]["port"], db=0
+    )
 
-    # connectMongo(config['mongo_uri'])
-    logging.info('[neb] 开始加载品类信息 <-- %s' % config["data"]["categories"])
-    flatCategories = loadFlatCategories(config["data"]["categories"])
+    # connectMongo(CONFIG['mongo_uri'])
+    logging.info('[neb] 开始加载品类信息 <-- %s' % CONFIG["data"]["categories"])
+    flatCategories = loadFlatCategories(CONFIG["data"]["categories"])
     logging.info('[neb] 共发现 %d 个品类' % len(flatCategories))
 
-    logging.info('[neb] 开始加载门店信息 <-- %s' % config["data"]["stores"])
-    stores = loadStores(config["data"]["stores"])
+    logging.info('[neb] 开始加载门店信息 <-- %s' % CONFIG["data"]["stores"])
+    stores = loadStores(CONFIG["data"]["stores"])
     logging.info('[neb] 共发现 %d 个门店' % len(stores))
 
-    # logging.info('[neb] 开始加载商品信息 <-- %s' % config["data"]["goods"])
-    # loadGoodsToRedis(config["data"]["goods"])
+    # logging.info('[neb] 开始加载商品信息 <-- %s' % CONFIG["data"]["goods"])
+    # loadGoodsToRedis(CONFIG["data"]["goods"])
 
     loadAllTransactions()
     print_prof_data()

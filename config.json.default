@@ -1,10 +1,20 @@
 {
   "dburi_trs": "mongodb://baichuan:qwe123123@172.16.0.7/bc_trs",
+  "R0": {
+      "host": "106.15.121.168",
+      "port": 26379
+  },
+  "R1": {
+      "host": "106.15.121.168",
+      "port": 16379
+  },
+  "trs_from": 1,
+  "trs_to": 2,
   "data": {
-    "categories": "/mnt/dms/data2/categories.txt",
-    "provinces": "/mnt/dms/data2/provinces.txt",
-    "stores": "/mnt/dms/data2/stores.txt",
-    "goods": "/mnt/dms/trs/goods.txt",
-    "transactions": "/mnt/dms/trs/tr-%02d.txt"
+    "categories": "/Volumes/AOSPDISK/baichuan/data/categories.txt",
+    "provinces": "/Volumes/AOSPDISK/baichuan/data/provinces.txt",
+    "stores": "/Volumes/AOSPDISK/baichuan/data/stores.txt",
+    "goods": "/Volumes/AOSPDISK/baichuan/data/goods.txt",
+    "transactions": "/Volumes/AOSPDISK/baichuan/data/tr-%02d.txt"
   }
 }
