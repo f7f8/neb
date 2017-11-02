@@ -195,10 +195,7 @@ def saveOrder(order, mkey):
         order["uid"] % 10
     )
 
-    query = {'order_id': order['order_id']}
-    update = {'$set': order}
-
-    DB[dbkey].update_one(query, update, upsert = True)
+    DB[dbkey].insert(order)
 
 
 def updateStoreStat(stid, qty, amount, mkey):
