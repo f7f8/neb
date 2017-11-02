@@ -1,5 +1,5 @@
 {
-  "dburi_trs": "mongodb://baichuan:qwe123123@172.16.0.7/bc_trs",
+  "db_baichuan": "mongodb://baichuandbo:qwe123123@localhost/baichuan",
   "R0": {
       "host": "106.15.121.168",
       "port": 26379
@@ -9,7 +9,7 @@
       "port": 16379
   },
   "trs_from": 1,
-  "trs_to": 2,
+  "trs_to": 1,
   "data": {
     "categories": "/Volumes/AOSPDISK/baichuan/data/categories.txt",
     "provinces": "/Volumes/AOSPDISK/baichuan/data/provinces.txt",
