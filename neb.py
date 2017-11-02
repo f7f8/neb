@@ -377,6 +377,6 @@ if __name__ == '__main__':
     # logging.info('[neb] 开始加载商品信息 <-- %s' % CONFIG["data"]["goods"])
     # loadGoodsToRedis(CONFIG["data"]["goods"])
 
-    #loadAllTransactions()
-    doLoadTrTask(CONFIG["data"]["transactions"] % 1)
+    loadAllTransactions()
+    # doLoadTrTask(CONFIG["data"]["transactions"] % 1)
     print_prof_data()
