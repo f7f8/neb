@@ -299,7 +299,7 @@ def loadTransactions(filename, stores):
 
             tc += 1
 
-            if tc % 10 == 0:
+            if tc % 10000 == 0:
                 logging.debug('已加载交易 %d / %d 行' % (tc, lc))
 
         saveOrder(lastOrder, mkey)
