@@ -13,6 +13,8 @@ from functools import wraps
 from pymongo import MongoClient
 import signal
 from multiprocessing import Pool
+import concurrent
+from concurrent.futures import ThreadPoolExecutor
 import redis
 
 _LOG_FILE = 'log.txt'
@@ -56,9 +58,12 @@ def traversalCategories():
     pass
 
 
-def connectMongo(url):
-    global DB
-    DB = MongoClient(url).baichuan
+def connectMongo():
+    global DB0
+    DB0 = MongoClient(CONFIG['db0']).baichuan
+    
+    global DB1
+    DB1 = MongoClient(CONFIG['db1']).baichuan
 
 
 def getGoodsFromLocal(sku):
@@ -205,14 +210,14 @@ def loadGoods(filename):
 
     return goods
 
-def saveOrder(order, mkey):
-    dbkey = 'tr%s_%d' % (
-        mkey,
-        order["uid"] % 10
-    )
-
-    DB[dbkey].insert(order)
-
+def saveBulkOrders(blk):
+    for k, v in blk.iteritems():
+        DB0[k].insert(v)
+#    if order["uid"] % 2 == 0:
+#        DB0[dbkey].insert(order)
+#    else:
+#        DB1[dbkey].insert(order)
+#
 
 def updateStoreStat(stid, qty, amount, mkey):
     pvid = STORES[stid]['province']
@@ -223,7 +228,7 @@ def updateStoreStat(stid, qty, amount, mkey):
         '$inc': {'qty': qty, 'amount': amount}
     }
 
-    DB['store_stats'].update(query, update, upsert = True)
+    DB0['store_stats'].update(query, update, upsert = True)
 
 
 def updateCategoryStat(cid, qty, amount, mkey):
@@ -235,7 +240,7 @@ def updateCategoryStat(cid, qty, amount, mkey):
         '$inc': {'qty': qty, 'amount': amount}
     }
 
-    DB['category_stats'].update(query, update, upsert = True)
+    DB0['category_stats'].update(query, update, upsert = True)
 
 
 def loadTransactions(filename, stores):
@@ -253,6 +258,7 @@ def loadTransactions(filename, stores):
 
         mkey = ''
 
+        bulkSet = {}
         for line in f:
             lc += 1
             m = r.match(line)
@@ -266,12 +272,26 @@ def loadTransactions(filename, stores):
             lastoid = lastOrder['order_id']
             if lastoid == "-1" or lastoid != oid:
                 if lastoid != '-1':
-                    saveOrder(lastOrder, mkey)
+                    dbkey = 'tr%s_%d' % (
+                        mkey,
+                        lastOrder["uid"] % 10
+                    )
+
+                    if dbkey not in bulkSet:
+                        bulkSet[dbkey] = []
+
+                    bulkSet[dbkey].append(lastOrder)
                     oc += 1
+                    
+                    if oc % 50000 == 0:
+                        saveBulkOrders(bulkSet)
+                        bulkSet = {}
 
-                tm = dateutil.parser.parse(g[4])
+                #tm = dateutil.parser.parse(g[4])
+                tm = g[4][:26]
 
-                mkey = tm.strftime("%Y%m")
+                #mkey = tm.strftime("%Y%m")
+                mkey = tm[:4] + tm[5:7]
                 uid = int(g[5])
                 stid = int(g[6])
                 lastOrder = {
@@ -290,37 +310,75 @@ def loadTransactions(filename, stores):
             amount = price * qty
             lastOrder['total_amount'] += amount
 
-            g = getGoodsFromLocal(sku)
+            go = getGoodsFromLocal(sku)
 
             lastOrder['items'].append({
                 'sku': sku,
-                'title': g['name'],
+                'title': go['name'],
                 'price': price,
                 'qty': qty,
                 'amount': amount
             })
 
-            updateStoreStat(lastOrder['store_id'], qty, amount, mkey)
-            updateCategoryStat(g['cid'], qty, amount, mkey)
+            # updateStoreStat(lastOrder['store_id'], qty, amount, mkey)
+            # updateCategoryStat(go['cid'], qty, amount, mkey)
 
             tc += 1
 
             if tc % 10000 == 0:
                 logging.debug('已加载交易 %d / %d 行' % (tc, lc))
 
-        saveOrder(lastOrder, mkey)
         oc += 1
+        saveBulkOrders(bulkSet)
+        bulkSet = {}
         logging.debug('成功加载交易 %d / %d 行, 共 %d 个订单' % (tc, lc, oc))
 
 
 def doLoadTrTask(filename):
-    connectMongo(CONFIG['db_baichuan'])
+    connectMongo()
     logging.info('[neb] 开始加载交易信息 <-- %s' % filename)
     loadTransactions(filename, STORES)
 
 
 def init_worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
+@profile
+def loadAllThreads2():
+    trange = range(CONFIG["trs_from"], CONFIG["trs_to"] + 1)
+    tasks = [CONFIG["data"]["transactions"] % i for i in trange]
+   
+    try:
+        fs = []
+        e = ThreadPoolExecutor(max_workers=4)
+        for task in tasks:
+            fs.append(e.submit(doLoadTrTask, task))
+
+        e.shutdown(False)
+        concurrent.futures.wait(fs)
+    except KeyboardInterrupt:
+        LOG.debug('任务强制中断！')
+
+
+@profile
+def loadAllThreads():
+    trange = range(CONFIG["trs_from"], CONFIG["trs_to"] + 1)
+    tasks = [CONFIG["data"]["transactions"] % i for i in trange]
+    futures = set()
+    with ThreadPoolExecutor(max_workers=4) as executor:                                                                                                                      
+        for c in tasks:
+            future = executor.submit(doLoadTrTask, c)
+            futures.add(future)
+
+    try:
+        for future in concurrent.futures.as_completed(futures):
+            err = future.exception()
+            if err is not None: raise err 
+    except KeyboardInterrupt:
+        LOG.debug('任务强制中断！')
+        executor._threads.clear()
+        concurrent.futures.thread._threads_queues.clear()
 
 
 @profile
@@ -384,6 +442,7 @@ if __name__ == '__main__':
     # loadGoodsToRedis(CONFIG["data"]["goods"])
     GOODS = loadGoods(CONFIG["data"]["goods"])
 
-    loadAllTransactions()
+    loadAllThreads()
+    # loadAllTransactions()
     # doLoadTrTask(CONFIG["data"]["transactions"] % 1)
     print_prof_data()
