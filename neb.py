@@ -338,7 +338,7 @@ def loadTransactions(filename, stores):
                     'pvid': pvid,
                     'qty': qty,
                     'amount': amount,
-                    'mkey': mkey
+                    'mkey': int(mkey)
                 }
 
             bulkUpdStores[stbkey]['qty'] += qty
@@ -352,7 +352,7 @@ def loadTransactions(filename, stores):
                     'cid': rootcid,
                     'qty': qty,
                     'amount': amount,
-                    'mkey': mkey
+                    'mkey': int(mkey)
                 }
 
             bulkUpdCategories[cibkey]['qty'] += qty
