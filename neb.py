@@ -211,12 +211,10 @@ def loadGoods(filename):
 
 def saveBulkOrders(blk):
     for k, v in blk.iteritems():
-        DB0[k].insert(v)
-#    if order["uid"] % 2 == 0:
-#        DB0[dbkey].insert(order)
-#    else:
-#        DB1[dbkey].insert(order)
-#
+        if int(k[-1:]) % 2 == 0:
+            DB0[k].insert(v)
+        else:
+            DB1[k].insert(v)
 
 
 def updateStoreStat(blk):
