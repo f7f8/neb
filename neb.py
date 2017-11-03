@@ -336,8 +336,8 @@ def loadTransactions(filename, stores):
                 bulkUpdStores[stbkey] = {
                     'stid': stid,
                     'pvid': pvid,
-                    'qty': qty,
-                    'amount': amount,
+                    'qty': 0,
+                    'amount': 0,
                     'mkey': int(mkey)
                 }
 
@@ -350,8 +350,8 @@ def loadTransactions(filename, stores):
             if cibkey not in bulkUpdCategories:
                 bulkUpdCategories[cibkey] = {
                     'cid': rootcid,
-                    'qty': qty,
-                    'amount': amount,
+                    'qty': 0,
+                    'amount': 0,
                     'mkey': int(mkey)
                 }
 
